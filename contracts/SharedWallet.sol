@@ -29,17 +29,6 @@ contract SharedWallet is
         walletBalance = msg.value;
     }
 
-    function getBeneficiaryInfo(
-        address _beneficiary
-    )
-        public
-        view
-        returns (uint256 balance, uint256 limit, uint256 dailyBalance)
-    {
-        Beneficiary memory b = beneficiaries[_beneficiary];
-        return (b.totalBalance, b.limit, b.dailyBalance);
-    }
-
     function deposit() public payable {
         _recordTransaction(
             depositHistory,
@@ -110,6 +99,17 @@ contract SharedWallet is
         emit EtherTransferred(msg.sender, _to, _amount);
     }
 
+    function getBeneficiaryInfo(
+        address _addr
+    )
+        public
+        view
+        returns (uint256 balance, uint256 limit, uint256 dailyBalance)
+    {
+        Beneficiary memory b = beneficiaries[_addr];
+        return (b.totalBalance, b.limit, b.dailyBalance);
+    }
+
     // Admin Actions
     function addBeneficiary(
         address _addr,
@@ -131,8 +131,13 @@ contract SharedWallet is
         _addAllowanceToBeneficiary(_addr, _amount);
     }
 
-    function getWalletBalance() public view onlyOwner returns (uint256) {
-        return walletBalance;
+    function getWalletBalance()
+        public
+        view
+        onlyOwner
+        returns (uint256 contractBalance, uint256 walletBalance)
+    {
+        return (address(this).balance, walletBalance);
     }
 
     // TODO create transfer ownership feature
