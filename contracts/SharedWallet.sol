@@ -2,41 +2,20 @@
 pragma solidity ^0.8.28;
 
 // Uncomment this line to use console.log
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "./structs/Beneficiary.sol";
+import "./structs/Transaction.sol";
+import "./WalletBase.sol";
+import "./BeneficiaryManager.sol";
 
-contract SharedWallet is ReentrancyGuard {
-    struct Transaction {
-        uint timestamp;
-        uint amount;
-        address from;
-        address to;
-    }
-
-    struct Beneficiary {
-        uint totalBalance;
-        uint limit;
-        uint dailyBalance;
-    }
-
-    struct Wallet {
-        address owner;
-        uint numDeposits;
-        uint numWithdrawals;
-        mapping(uint => Transaction) depositHistory;
-        mapping(uint => Transaction) withdrawalHistory;
-        uint walletBalance;
-        mapping(address => Beneficiary) beneficiaries;
-    }
-
-    Wallet private wallet;
-
-    event EtherTransferred(
-        address indexed from,
-        address indexed to,
-        uint256 amount
-    );
-
+contract SharedWallet is
+    WalletBase,
+    BeneficiaryManager,
+    ReentrancyGuard,
+    Ownable
+{
     receive() external payable {
         deposit();
     }
@@ -45,152 +24,116 @@ contract SharedWallet is ReentrancyGuard {
         deposit();
     }
 
-    modifier onlyOwner() {
-        require(wallet.owner == msg.sender, "You are not the owner");
-        _;
+    constructor() payable Ownable(msg.sender) {
+        _transferOwnership(msg.sender);
+        walletBalance = msg.value;
     }
 
-    modifier insufficientBalance(address _beneficiary, uint _amount) {
-        require(
-            wallet.beneficiaries[_beneficiary].totalBalance >= _amount,
-            "Insufficient ballance"
-        );
-        _;
+    function getBeneficiaryInfo(
+        address _beneficiary
+    )
+        public
+        view
+        returns (uint256 balance, uint256 limit, uint256 dailyBalance)
+    {
+        Beneficiary memory b = beneficiaries[_beneficiary];
+        return (b.totalBalance, b.limit, b.dailyBalance);
     }
-
-    modifier dailyLimit(address _beneficiary, uint _amount) {
-        require(
-            wallet.beneficiaries[_beneficiary].limit -
-                wallet.beneficiaries[_beneficiary].dailyBalance >=
-                _amount,
-            "You have reached your daily transaction balance"
-        );
-        _;
-    }
-
-    modifier minimalAmount(uint _amount) {
-        require(_amount > 0, "Amount must be greater than zero");
-        _;
-    }
-
-    constructor() payable {
-        wallet.owner = msg.sender;
-        wallet.walletBalance = msg.value;
-    }
-
-    function addBeneficiary(
-        address _address,
-        uint _amount,
-        uint _limit
-    ) public onlyOwner {
-        wallet.beneficiaries[_address].totalBalance += _amount;
-        wallet.beneficiaries[_address].limit = _limit;
-    }
-
-    function increaseLimitBy(address _beneficiary, uint _amount) public {
-        wallet.beneficiaries[_beneficiary].limit += _amount;
-    }
-
-    function addAllowanceToBeneficiary(
-        address _to,
-        uint _amount
-    ) public onlyOwner {
-        wallet.beneficiaries[_to].totalBalance += _amount;
-    }
-
-    function getWalletBalance() public view onlyOwner returns (uint) {
-        return wallet.walletBalance;
-    }
-
-    function getBeneficiaryBalance(
-        address _address
-    ) public view returns (uint) {
-        return wallet.beneficiaries[_address].totalBalance;
-    }
-
-    function getBeneficiaryLimit(address _address) public view returns (uint) {
-        return wallet.beneficiaries[_address].limit;
-    }
-
-    // TODO add getter for Beneficiary daily balance
 
     function deposit() public payable {
-        Transaction memory transaction = Transaction(
-            block.timestamp,
-            msg.value,
+        _recordTransaction(
+            depositHistory,
+            numDeposits,
             msg.sender,
-            address(this)
+            address(this),
+            msg.value
         );
-        wallet.depositHistory[wallet.numDeposits] = transaction;
-        wallet.walletBalance += msg.value;
-        wallet.beneficiaries[msg.sender].totalBalance += msg.value;
-
-        wallet.numDeposits++;
+        walletBalance += msg.value;
+        numDeposits++;
     }
 
     function withdraw(
         uint _amount
     )
         public
-        insufficientBalance(msg.sender, _amount)
+        hasSufficientBalance(msg.sender, _amount)
         dailyLimit(msg.sender, _amount)
         minimalAmount(_amount)
         nonReentrant
     {
-        Transaction memory transaction = Transaction(
-            block.timestamp,
-            _amount,
+        _recordTransaction(
+            withdrawalHistory,
+            numWithdrawals,
             address(this),
-            msg.sender
+            msg.sender,
+            _amount
         );
-        wallet.withdrawalHistory[wallet.numWithdrawals] = transaction;
-        wallet.beneficiaries[msg.sender].totalBalance -= _amount;
-        wallet.beneficiaries[msg.sender].dailyBalance += _amount;
-        wallet.walletBalance -= _amount;
 
-        wallet.numWithdrawals++;
+        _spendEther(msg.sender, _amount);
+        walletBalance -= _amount;
+        numWithdrawals++;
 
         payable(msg.sender).transfer(_amount);
 
-        emit EtherTransferred(msg.sender, msg.sender, _amount);
+        emit EtherTransferred(address(this), msg.sender, _amount);
     }
 
     function transferTo(
         address payable _to,
         uint _amount
     )
-        public
-        insufficientBalance(msg.sender, _amount)
+        external
+        nonReentrant
+        onlyValidRecipient(_to)
+        hasSufficientBalance(msg.sender, _amount)
         dailyLimit(msg.sender, _amount)
         minimalAmount(_amount)
-        nonReentrant
     {
-        require(_to != address(0), "Invalid Recipient");
-        Transaction memory transaction = Transaction(
-            block.timestamp,
-            _amount,
+        _recordTransaction(
+            withdrawalHistory,
+            numWithdrawals,
             msg.sender,
-            _to
+            _to,
+            _amount
         );
 
         bool isContract = _to.code.length > 0;
-        uint gasLimit = isContract ? 100000 : 2300;
+        uint gasLimit = isContract ? 100_000 : 2_300;
 
-        wallet.withdrawalHistory[wallet.numWithdrawals] = transaction;
-        wallet.beneficiaries[msg.sender].totalBalance -= _amount;
-        wallet.beneficiaries[msg.sender].dailyBalance += _amount;
-        wallet.walletBalance -= _amount;
-
-        wallet.numWithdrawals++;
+        _spendEther(msg.sender, _amount);
+        walletBalance -= _amount;
+        numWithdrawals++;
 
         (bool success, ) = _to.call{value: _amount, gas: gasLimit}("");
-
         require(success, "Transfer failed");
+
         emit EtherTransferred(msg.sender, _to, _amount);
     }
 
-    // TODO create transfer ownership feature
-    function transferOwnership() public {}
+    // Admin Actions
+    function addBeneficiary(
+        address _addr,
+        uint256 _amount,
+        uint256 _limit
+    ) public onlyOwner {
+        _addBeneficiary(_addr, _amount, _limit);
+    }
 
-    // TODO create limit reset feature
+    function increaseLimitBy(address _addr, uint256 _amount) public onlyOwner {
+        _increaseLimitBy(_addr, _amount);
+    }
+
+    function decreaseLimitBy(address _addr, uint256 _amount) public onlyOwner {
+        _decreaseLimitBy(_addr, _amount);
+    }
+
+    function addAllowance(address _addr, uint256 _amount) public onlyOwner {
+        _addAllowanceToBeneficiary(_addr, _amount);
+    }
+
+    function getWalletBalance() public view onlyOwner returns (uint256) {
+        return walletBalance;
+    }
+
+    // TODO create transfer ownership feature
 }
