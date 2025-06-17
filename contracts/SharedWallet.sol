@@ -127,6 +127,10 @@ contract SharedWallet is
         _decreaseLimitBy(_addr, _amount);
     }
 
+    function setNewLimit(address _addr, uint256 _amount) public onlyOwner {
+        _setNewLimit(_addr, _amount);
+    }
+
     function addAllowance(address _addr, uint256 _amount) public onlyOwner {
         _addAllowanceToBeneficiary(_addr, _amount);
     }

@@ -34,7 +34,7 @@ abstract contract BeneficiaryManager {
         }
     }
 
-    function _addBeneficiary(address addr, uint amount, uint limit) public {
+    function _addBeneficiary(address addr, uint amount, uint limit) internal {
         require(
             totalAllocated + amount <= address(this).balance,
             "Insufficient wallet balance"
@@ -48,15 +48,19 @@ abstract contract BeneficiaryManager {
         totalAllocated += amount;
     }
 
-    function _increaseLimitBy(address _beneficiary, uint _amount) public {
+    function _increaseLimitBy(address _beneficiary, uint _amount) internal {
         beneficiaries[_beneficiary].limit += _amount;
     }
 
-    function _decreaseLimitBy(address _beneficiary, uint _amount) public {
+    function _decreaseLimitBy(address _beneficiary, uint _amount) internal {
         beneficiaries[_beneficiary].limit -= _amount;
     }
 
-    function _addAllowanceToBeneficiary(address _to, uint _amount) public {
+    function _setNewLimit(address _beneficiary, uint _amount) internal {
+        beneficiaries[_beneficiary].limit = _amount;
+    }
+
+    function _addAllowanceToBeneficiary(address _to, uint _amount) internal {
         require(
             totalAllocated + _amount <= address(this).balance,
             "Insufficient wallet balance"
