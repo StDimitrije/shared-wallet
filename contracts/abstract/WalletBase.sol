@@ -39,7 +39,7 @@ abstract contract WalletBase is Ownable2Step, ReentrancyGuard {
     }
 
     function getWalletBalance()
-        public
+        external
         view
         onlyOwner
         returns (uint256 contractBalance, uint)

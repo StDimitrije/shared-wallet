@@ -67,7 +67,7 @@ contract SharedWallet is WalletBase, BeneficiaryManager {
     function withdraw(
         uint _amount
     )
-        public
+        external
         checkAllowance(msg.sender, _amount)
         minimalAmount(_amount)
         onlyValidRecipient(msg.sender)
@@ -141,25 +141,29 @@ contract SharedWallet is WalletBase, BeneficiaryManager {
         address _addr,
         uint256 _amount,
         uint256 _limit
-    ) public onlyOwner {
+    ) external onlyOwner {
         _addBeneficiary(_addr, _amount, _limit);
     }
 
-    function increaseLimitBy(address _addr, uint256 _amount) public onlyOwner {
+    function increaseLimitBy(
+        address _addr,
+        uint256 _amount
+    ) external onlyOwner {
         _increaseLimitBy(_addr, _amount);
     }
 
-    function decreaseLimitBy(address _addr, uint256 _amount) public onlyOwner {
+    function decreaseLimitBy(
+        address _addr,
+        uint256 _amount
+    ) external onlyOwner {
         _decreaseLimitBy(_addr, _amount);
     }
 
-    function setNewLimit(address _addr, uint256 _amount) public onlyOwner {
+    function setNewLimit(address _addr, uint256 _amount) external onlyOwner {
         _setNewLimit(_addr, _amount);
     }
 
-    function addAllowance(address _addr, uint256 _amount) public onlyOwner {
+    function addAllowance(address _addr, uint256 _amount) external onlyOwner {
         _addAllowanceToBeneficiary(_addr, _amount);
     }
-
-    // TODO create transfer ownership feature
 }
