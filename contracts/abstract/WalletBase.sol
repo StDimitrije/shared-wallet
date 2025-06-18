@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "./structs/Transaction.sol";
+import "../structs/Transaction.sol";
 
 abstract contract WalletBase {
     uint public walletBalance;

@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./structs/Beneficiary.sol";
 import "./structs/Transaction.sol";
-import "./WalletBase.sol";
-import "./BeneficiaryManager.sol";
+import "./abstract/WalletBase.sol";
+import "./abstract/BeneficiaryManager.sol";
 
 contract SharedWallet is
     WalletBase,
@@ -98,6 +98,21 @@ contract SharedWallet is
 
         emit EtherTransferred(msg.sender, _to, _amount);
     }
+
+    // TODO abstract _recordTransaction() and _spendEther() to eliminate duplicate code
+    // function handleTransaction(
+    //     mapping(uint => Transaction) storage _history,
+    //     uint _counter,
+    //     address _from,
+    //     address _to,
+    //     uint _amount
+    // ) private {
+    //     _recordTransaction(_history, _counter, _from, _to, _amount);
+    //     _spendEther(_from, _amount);
+
+    //     walletBalance -= _amount;
+    //     numWithdrawals++;
+    // }
 
     function getBeneficiaryInfo(
         address _addr
