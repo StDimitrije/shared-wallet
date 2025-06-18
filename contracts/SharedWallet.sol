@@ -3,19 +3,24 @@ pragma solidity ^0.8.28;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "./structs/Beneficiary.sol";
 import "./structs/Transaction.sol";
 import "./abstract/WalletBase.sol";
 import "./abstract/BeneficiaryManager.sol";
 
-contract SharedWallet is
-    WalletBase,
-    BeneficiaryManager,
-    ReentrancyGuard,
-    Ownable
-{
+/**
+ * @title SharedWallet
+ * Full Wallet Impplementation - Combines WalletBase + BeneficiaryManager with emergency ownership recovery
+ */
+contract SharedWallet is WalletBase, BeneficiaryManager {
+    address public recoveryGuardian;
+    event EtherTransferred(
+        address indexed from,
+        address indexed to,
+        uint256 amount
+    );
+
     receive() external payable {
         deposit();
     }
@@ -24,12 +29,30 @@ contract SharedWallet is
         deposit();
     }
 
-    constructor() payable Ownable(msg.sender) {
-        _transferOwnership(msg.sender);
+    constructor(address _recoveryGuardian) payable {
         walletBalance = msg.value;
+        recoveryGuardian = _recoveryGuardian;
     }
 
-    function deposit() public payable {
+    modifier onlyRecoveryGuardian() {
+        require(
+            msg.sender == recoveryGuardian,
+            "You are not the recovery guardian"
+        );
+        _;
+    }
+
+    function setRecoveryGuardian(address _guardian) external onlyOwner {
+        recoveryGuardian = _guardian;
+    }
+
+    function emergencyTransferOwnership(
+        address _newOwner
+    ) external onlyRecoveryGuardian {
+        _transferOwnership(_newOwner);
+    }
+
+    function deposit() public payable onlyOwner {
         _recordTransaction(
             depositHistory,
             numDeposits,
@@ -45,9 +68,9 @@ contract SharedWallet is
         uint _amount
     )
         public
-        hasSufficientBalance(msg.sender, _amount)
-        dailyLimit(msg.sender, _amount)
+        checkAllowance(msg.sender, _amount)
         minimalAmount(_amount)
+        onlyValidRecipient(msg.sender)
         nonReentrant
     {
         _recordTransaction(
@@ -74,8 +97,7 @@ contract SharedWallet is
         external
         nonReentrant
         onlyValidRecipient(_to)
-        hasSufficientBalance(msg.sender, _amount)
-        dailyLimit(msg.sender, _amount)
+        checkAllowance(msg.sender, _amount)
         minimalAmount(_amount)
     {
         _recordTransaction(
@@ -114,17 +136,6 @@ contract SharedWallet is
     //     numWithdrawals++;
     // }
 
-    function getBeneficiaryInfo(
-        address _addr
-    )
-        public
-        view
-        returns (uint256 balance, uint256 limit, uint256 dailyBalance)
-    {
-        Beneficiary memory b = beneficiaries[_addr];
-        return (b.totalBalance, b.limit, b.dailyBalance);
-    }
-
     // Admin Actions
     function addBeneficiary(
         address _addr,
@@ -148,15 +159,6 @@ contract SharedWallet is
 
     function addAllowance(address _addr, uint256 _amount) public onlyOwner {
         _addAllowanceToBeneficiary(_addr, _amount);
-    }
-
-    function getWalletBalance()
-        public
-        view
-        onlyOwner
-        returns (uint256 contractBalance, uint256 walletBalance)
-    {
-        return (address(this).balance, walletBalance);
     }
 
     // TODO create transfer ownership feature

@@ -2,35 +2,28 @@
 pragma solidity ^0.8.28;
 
 import "../structs/Beneficiary.sol";
-import "../structs/Transaction.sol";
 
+/**
+ * @title BeneficiaryManager
+ * Handles allowances and tracking of beneficiaries
+ */
 abstract contract BeneficiaryManager {
     mapping(address => Beneficiary) internal beneficiaries;
     uint256 internal totalAllocated;
 
-    modifier hasSufficientBalance(address _beneficiary, uint _amount) {
-        require(
-            beneficiaries[_beneficiary].totalBalance >= _amount,
-            "Insufficient ballance"
-        );
-        _;
-    }
-
-    modifier dailyLimit(address _beneficiary, uint _amount) {
+    modifier checkAllowance(address _beneficiary, uint _amount) {
+        Beneficiary storage b = beneficiaries[_beneficiary];
         _resetDailySpentIfNeeded(_beneficiary);
-        require(
-            beneficiaries[_beneficiary].dailyBalance + _amount <=
-                beneficiaries[_beneficiary].limit,
-            "Transaction exceeds your daily limit"
-        );
+        require(b.totalBalance >= _amount, "Insufficient allowance");
+        require(b.dailyBalance + _amount <= b.limit, "Daily limit exceeded");
         _;
     }
 
     function _resetDailySpentIfNeeded(address _beneficiary) internal {
-        Beneficiary storage beneficiary = beneficiaries[_beneficiary]; //returns a reference to storage, not a copy.
-        if (block.timestamp - beneficiary.lastReset >= 1 days) {
-            beneficiary.dailyBalance = 0;
-            beneficiary.lastReset = block.timestamp;
+        Beneficiary storage b = beneficiaries[_beneficiary]; //returns a reference to storage, not a copy.
+        if (block.timestamp - b.lastReset >= 1 days) {
+            b.dailyBalance = 0;
+            b.lastReset = block.timestamp;
         }
     }
 
@@ -75,5 +68,16 @@ abstract contract BeneficiaryManager {
         b.totalBalance -= _amount;
         b.dailyBalance += _amount;
         totalAllocated -= _amount;
+    }
+
+    function getBeneficiaryData(
+        address user
+    )
+        external
+        view
+        returns (uint256 balance, uint256 limit, uint256 dailySpent)
+    {
+        Beneficiary storage b = beneficiaries[user];
+        return (b.totalBalance, b.limit, b.dailyBalance);
     }
 }
