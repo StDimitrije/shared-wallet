@@ -14,7 +14,6 @@ import "./abstract/BeneficiaryManager.sol";
  * Full Wallet Impplementation - Combines WalletBase + BeneficiaryManager with emergency ownership recovery
  */
 contract SharedWallet is WalletBase, BeneficiaryManager {
-    address public recoveryGuardian;
     event EtherTransferred(
         address indexed from,
         address indexed to,
@@ -29,30 +28,13 @@ contract SharedWallet is WalletBase, BeneficiaryManager {
         deposit();
     }
 
-    constructor(address _recoveryGuardian) payable {
+    constructor(
+        address recoveryGuardian_
+    ) payable WalletBase(recoveryGuardian_) {
         walletBalance = msg.value;
-        recoveryGuardian = _recoveryGuardian;
     }
 
-    modifier onlyRecoveryGuardian() {
-        require(
-            msg.sender == recoveryGuardian,
-            "You are not the recovery guardian"
-        );
-        _;
-    }
-
-    function setRecoveryGuardian(address _guardian) external onlyOwner {
-        recoveryGuardian = _guardian;
-    }
-
-    function emergencyTransferOwnership(
-        address _newOwner
-    ) external onlyRecoveryGuardian {
-        _transferOwnership(_newOwner);
-    }
-
-    function deposit() public payable onlyOwner {
+    function deposit() public payable {
         _recordTransaction(
             depositHistory,
             numDeposits,

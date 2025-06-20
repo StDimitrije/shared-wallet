@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * Handles core wallet operations and transaction tracking
  */
 abstract contract WalletBase is Ownable2Step, ReentrancyGuard {
+    address public recoveryGuardian;
     uint public walletBalance;
     uint public numDeposits;
     uint public numWithdrawals;
@@ -26,7 +27,24 @@ abstract contract WalletBase is Ownable2Step, ReentrancyGuard {
         _;
     }
 
-    constructor() Ownable(msg.sender) {}
+    modifier onlyRecoveryGuardian(address _addr) {
+        require(recoveryGuardian == _addr, "You are not the recovery guardian");
+        _;
+    }
+
+    constructor(address _recoveryGuardian) Ownable(msg.sender) {
+        recoveryGuardian = _recoveryGuardian;
+    }
+
+    function setRecoveryGuardian(address _guardian) external onlyOwner {
+        recoveryGuardian = _guardian;
+    }
+
+    function emergencyTransferOwnership(
+        address _newOwner
+    ) external onlyRecoveryGuardian(_newOwner) {
+        transferOwnership(_newOwner);
+    }
 
     function _recordTransaction(
         mapping(uint256 => Transaction) storage history, //expects a storage reference and modifies it in-place.
