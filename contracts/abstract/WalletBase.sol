@@ -27,23 +27,25 @@ abstract contract WalletBase is Ownable2Step, ReentrancyGuard {
         _;
     }
 
-    modifier onlyRecoveryGuardian(address _addr) {
-        require(recoveryGuardian == _addr, "You are not the recovery guardian");
+    modifier onlyRecoveryGuardian() {
+        require(
+            recoveryGuardian == msg.sender,
+            "You are not the recovery guardian"
+        );
         _;
     }
 
     constructor(address _recoveryGuardian) Ownable(msg.sender) {
+        require(_recoveryGuardian != address(0), "Invalid guardian address");
         recoveryGuardian = _recoveryGuardian;
     }
 
-    function setRecoveryGuardian(address _guardian) external onlyOwner {
+    function updateRecoveryGuardian(address _guardian) external onlyOwner {
         recoveryGuardian = _guardian;
     }
 
-    function emergencyTransferOwnership(
-        address _newOwner
-    ) external onlyRecoveryGuardian(_newOwner) {
-        transferOwnership(_newOwner);
+    function emergencyTransferOwnership() external onlyRecoveryGuardian {
+        _transferOwnership(msg.sender);
     }
 
     function _recordTransaction(
@@ -54,14 +56,5 @@ abstract contract WalletBase is Ownable2Step, ReentrancyGuard {
         uint256 amount
     ) internal {
         history[counter] = Transaction(block.timestamp, amount, from, to);
-    }
-
-    function getWalletBalance()
-        external
-        view
-        onlyOwner
-        returns (uint256 contractBalance, uint)
-    {
-        return (address(this).balance, walletBalance);
     }
 }

@@ -2,13 +2,16 @@
 pragma solidity ^0.8.28;
 
 import "../structs/Beneficiary.sol";
+import "./WalletBase.sol";
 
 /**
  * @title BeneficiaryManager
  * Handles allowances and tracking of beneficiaries
  */
-abstract contract BeneficiaryManager {
-    mapping(address => Beneficiary) internal beneficiaries;
+
+abstract contract BeneficiaryManager is WalletBase {
+    mapping(address => Beneficiary) private beneficiaries;
+    address[] public beneficiariesList;
     uint256 internal totalAllocated;
 
     modifier checkAllowance(address _beneficiary, uint _amount) {
@@ -16,6 +19,11 @@ abstract contract BeneficiaryManager {
         _resetDailySpentIfNeeded(_beneficiary);
         require(b.totalBalance >= _amount, "Insufficient allowance");
         require(b.dailyBalance + _amount <= b.limit, "Daily limit exceeded");
+        _;
+    }
+
+    modifier onlyBeneficiary() {
+        require(beneficiaries[msg.sender].exists, "You are not a beneficiary");
         _;
     }
 
@@ -32,11 +40,15 @@ abstract contract BeneficiaryManager {
             totalAllocated + amount <= address(this).balance,
             "Insufficient wallet balance"
         );
-
-        Beneficiary storage b = beneficiaries[addr];
-        b.totalBalance += amount;
-        b.limit = limit;
-        b.lastReset = block.timestamp;
+        require(!beneficiaries[addr].exists, "Already a beneficiary");
+        beneficiaries[addr] = Beneficiary(
+            amount,
+            limit,
+            0,
+            block.timestamp,
+            true
+        );
+        beneficiariesList.push(addr);
 
         totalAllocated += amount;
     }

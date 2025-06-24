@@ -6,4 +6,5 @@ struct Beneficiary {
     uint limit;
     uint dailyBalance;
     uint lastReset;
+    bool exists;
 }

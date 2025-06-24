@@ -3,17 +3,13 @@ pragma solidity ^0.8.28;
 
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
-
-import "./structs/Beneficiary.sol";
-import "./structs/Transaction.sol";
-import "./abstract/WalletBase.sol";
-import "./abstract/BeneficiaryManager.sol";
+import "./abstract/ElectionRecovery.sol";
 
 /**
  * @title SharedWallet
  * Full Wallet Impplementation - Combines WalletBase + BeneficiaryManager with emergency ownership recovery
  */
-contract SharedWallet is WalletBase, BeneficiaryManager {
+contract SharedWallet is ElectionRecovery {
     event EtherTransferred(
         address indexed from,
         address indexed to,
@@ -32,6 +28,7 @@ contract SharedWallet is WalletBase, BeneficiaryManager {
         address recoveryGuardian_
     ) payable WalletBase(recoveryGuardian_) {
         walletBalance = msg.value;
+        // _addBeneficiary(msg.sender, msg.value, msg.value * 1e18 * 3);
     }
 
     function deposit() public payable {
@@ -102,21 +99,6 @@ contract SharedWallet is WalletBase, BeneficiaryManager {
 
         emit EtherTransferred(msg.sender, _to, _amount);
     }
-
-    // TODO abstract _recordTransaction() and _spendEther() to eliminate duplicate code
-    // function handleTransaction(
-    //     mapping(uint => Transaction) storage _history,
-    //     uint _counter,
-    //     address _from,
-    //     address _to,
-    //     uint _amount
-    // ) private {
-    //     _recordTransaction(_history, _counter, _from, _to, _amount);
-    //     _spendEther(_from, _amount);
-
-    //     walletBalance -= _amount;
-    //     numWithdrawals++;
-    // }
 
     // Admin Actions
     function addBeneficiary(
