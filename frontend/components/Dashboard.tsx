@@ -6,7 +6,7 @@ export default function Dashboard() {
 
   return(
     <div>
-      <h2 className="text-center">Dashboard</h2>
+      <h1 className="text-center">Dashboard</h1>
       <WalletProviders />
     </div>
   )
