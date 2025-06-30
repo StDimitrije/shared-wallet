@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useSyncProviders } from "../hooks/useSyncProviders";
 import { formatAddress } from "../utils/formatAddress";
 import { formatBalance } from "../utils/formatBalance";
@@ -17,11 +17,6 @@ export default function WalletProviders() {
   const isError = !!errorMessage;
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  
-
-  useEffect(()=> {
-    console.log('accountBalance', accountBalance)
-  }, [accountBalance])
 
    // Connect to the selected provider using eth_requestAccounts.
   const handleConnect = async (providerWithInfo: EIP6963ProviderDetail) => {
@@ -29,7 +24,6 @@ export default function WalletProviders() {
       const accounts:string[] | undefined  = (await providerWithInfo.provider.request({ method: "eth_requestAccounts" })) as string[] | undefined;
 
       if(accounts?.[0] != undefined) {
-        console.log('asd');
         setSelectedWallet(providerWithInfo);
         setUserAccount(accounts[0])
       }
@@ -58,7 +52,6 @@ export default function WalletProviders() {
       setIsLoading(false)
     }
   }
-
 
   // Display detected providers as connect buttons.
   return(

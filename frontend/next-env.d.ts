@@ -6,13 +6,15 @@
 /// <reference types="vite/client" />
 
 // https://eips.ethereum.org/EIPS/eip-1193 implementation 
+// EIP - 6963 introduces an alternative wallet detection mechanism to the window.ethereum injected provider.
+// This alternative mechanism enables dapps to support wallet interoperability by discovering multiple injected wallet providers in a user's browser.
 
 // Describes metadata related to a provider based on EIP-6963.
 interface EIP6963ProviderInfo {
-  walletId: string
   uuid: string
   name: string
   icon: string
+  rdns: string
 }
 
 // Represents the structure of a provider based on EIP-1193.

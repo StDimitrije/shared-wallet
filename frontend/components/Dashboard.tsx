@@ -1,13 +1,17 @@
 'use client'
 
-import WalletProviders from "./WalletProviders"
+import SelectedWallet from "./SelectedWallet"
+import { WalletError } from "./WalletError"
+import WalletList from "./WalletList"
 
 export default function Dashboard() {
 
   return(
     <div>
       <h1 className="text-center">Dashboard</h1>
-      <WalletProviders />
+      <WalletList />
+      <SelectedWallet />
+      <WalletError/>
     </div>
   )
 }
